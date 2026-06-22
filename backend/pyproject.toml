@@ -1,0 +1,48 @@
+[project]
+name = "workspace-backend"
+version = "0.1.0"
+description = "Workspace Django REST API"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "django>=6.0,<7",
+    "djangorestframework>=3.17,<4",
+    "djangorestframework-simplejwt>=5.5,<6",
+    "drf-spectacular>=0.29,<1",
+    "django-cors-headers>=4.9,<5",
+    "psycopg2-binary>=2.9,<3",
+    "python-dotenv>=1.0,<2",
+    "gunicorn>=23.0,<24",
+]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.11",
+]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+src = ["apps", "config"]
+
+[tool.ruff.format]
+quote-style = "single"
+indent-style = "space"
+skip-magic-trailing-comma = false
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["apps", "config"]
+
+[tool.ruff.lint.per-file-ignores]
+"**/migrations/*.py" = ["E501"]
+# Django settings собираются через star-import из base/dev — это стандартная практика.
+"config/settings.py" = ["F403"]
+"config/settings/*.py" = ["F403", "F405"]
+# manage.py — стандартный boilerplate Django с длинной строкой подсказки.
+"manage.py" = ["E501"]

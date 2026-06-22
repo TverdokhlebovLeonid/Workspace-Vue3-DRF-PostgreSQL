@@ -1,0 +1,83 @@
+{
+  "admin": {
+    "username": "admin",
+    "password": "123",
+    "email": "admin@example.com",
+    "language": "ru"
+  },
+  "locations": [
+    {
+      "key": "store-center",
+      "name": "Магазин Центр",
+      "location_type": "STORE",
+      "sort_order": 1
+    },
+    {
+      "key": "store-north",
+      "name": "Магазин Север",
+      "location_type": "STORE",
+      "sort_order": 2
+    },
+    {
+      "key": "cash-main",
+      "name": "Касса Главная",
+      "location_type": "CASH_REGISTER",
+      "sort_order": 3
+    }
+  ],
+  "employees": [
+    {
+      "key": "ivan",
+      "nickname": "Ivan",
+      "password": "UserDemo123!",
+      "first_name": "Иван",
+      "last_name": "Иванов",
+      "email": "ivan@example.com",
+      "phone": "+7 900 111-11-11",
+      "location_keys": ["store-center", "store-north"],
+      "work_rule_codes": ["WORK_2_ON_2"],
+      "cycle_start_date": "2026-06-02",
+      "is_active": true
+    },
+    {
+      "key": "maria",
+      "nickname": "Maria",
+      "password": "UserDemo123!",
+      "first_name": "Мария",
+      "last_name": "Пetrova",
+      "email": "maria@example.com",
+      "phone": "+7 900 222-22-22",
+      "location_keys": ["store-center", "cash-main"],
+      "work_rule_codes": ["WORK_3_ON_2"],
+      "cycle_start_date": "2026-06-02",
+      "is_active": true
+    },
+    {
+      "key": "alex",
+      "nickname": "Alex",
+      "password": "UserDemo123!",
+      "first_name": "Алексей",
+      "last_name": "Смирнов",
+      "email": "alex@example.com",
+      "phone": "+7 900 333-33-33",
+      "location_keys": ["store-north", "cash-main"],
+      "work_rule_codes": ["WORK_2_ON_2", "MAX_2_CONSECUTIVE"],
+      "cycle_start_date": "2026-06-02",
+      "is_active": true
+    },
+    {
+      "key": "olga",
+      "nickname": "Olga",
+      "password": "UserDemo123!",
+      "first_name": "Ольга",
+      "last_name": "Козлова",
+      "email": "olga@example.com",
+      "phone": "+7 900 444-44-44",
+      "location_keys": ["store-center", "store-north", "cash-main"],
+      "work_rule_codes": ["MAX_2_CONSECUTIVE"],
+      "cycle_start_date": null,
+      "is_active": true
+    }
+  ],
+  "generate_schedule": true
+}

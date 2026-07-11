@@ -1,7 +1,7 @@
 {
   "admin": {
     "username": "admin",
-    "password": "123",
+    "password": "AdminDemo123!",
     "email": "admin@example.com",
     "language": "ru"
   },

@@ -17,3 +17,7 @@ dist/
 # OS
 .DS_Store
 Thumbs.db
+
+# Django media uploads (keep directory, ignore files)
+backend/media/**
+!backend/media/.gitkeep

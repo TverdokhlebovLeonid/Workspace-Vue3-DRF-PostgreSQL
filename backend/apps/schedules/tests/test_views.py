@@ -302,3 +302,25 @@ def test_admin_can_bulk_save_schedule_changes(admin_client, schedule_setup):
     )
     assert shift.employee_id == schedule_setup['employee'].id
     assert 'grid' in response.data
+
+
+@pytest.mark.django_db
+def test_admin_bulk_save_returns_structured_employee_location_error(admin_client, schedule_setup):
+    employee = _create_employee()
+    response = admin_client.post(
+        GRID_SAVE_URL,
+        {
+            'changes': [
+                {
+                    'date': schedule_setup['shift_date'].isoformat(),
+                    'location_id': str(schedule_setup['location'].id),
+                    'employee_id': str(employee.id),
+                }
+            ]
+        },
+        format='json',
+    )
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert response.data['code'] == 'employee_not_assigned_to_location'
+    assert response.data['employee_nickname'] == employee.nickname
+    assert response.data['location_name'] == schedule_setup['location'].name

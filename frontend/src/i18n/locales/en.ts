@@ -48,7 +48,10 @@ export default {
     editorPaletteTitle: 'Employees for substitution',
     editorPaletteHint: 'Drag a name onto a cell to replace. Drag cell to cell to swap.',
     locationColumn: 'Location',
-    emptyCell: '—'
+    emptyCell: '—',
+    errors: {
+      employeeNotAtLocation: '{name} is not assigned to location "{location}".'
+    }
   },
   locations: {
     title: 'Locations',

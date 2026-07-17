@@ -36,7 +36,8 @@ const schedulesApi = {
   async saveChanges(changes: ScheduleShiftChange[]) {
     const { data } = await Http.post<{ saved: number; grid: ScheduleGrid }>(
       `${API_SCHEDULES_PREFIX}/grid/save/`,
-      { changes }
+      { changes },
+      { skipGlobalError: true }
     )
     return data
   },

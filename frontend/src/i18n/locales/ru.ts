@@ -49,7 +49,10 @@ export default {
     editorPaletteTitle: 'Сотрудники для подстановки',
     editorPaletteHint: 'Перетащите имя в ячейку — замена. Перетащите ячейку на ячейку — обмен.',
     locationColumn: 'Точка',
-    emptyCell: '—'
+    emptyCell: '—',
+    errors: {
+      employeeNotAtLocation: '{name} не привязан к точке «{location}».'
+    }
   },
   locations: {
     title: 'Точки',

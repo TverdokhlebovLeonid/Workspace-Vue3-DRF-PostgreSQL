@@ -221,6 +221,26 @@ def test_apply_schedule_changes_rejects_employee_not_assigned_to_location(schedu
 
 
 @pytest.mark.django_db
+def test_apply_schedule_changes_employee_location_error_is_structured(schedule_setup):
+    employee = _create_employee()
+    with pytest.raises(ValidationError) as exc_info:
+        apply_schedule_changes(
+            [
+                {
+                    'date': schedule_setup['shift_date'],
+                    'location_id': schedule_setup['location'].id,
+                    'employee_id': employee.id,
+                }
+            ]
+        )
+    detail = exc_info.value.detail
+    assert detail['code'] == 'employee_not_assigned_to_location'
+    assert detail['employee_nickname'] == employee.nickname
+    assert detail['location_name'] == schedule_setup['location'].name
+    assert detail['date'] == schedule_setup['shift_date'].isoformat()
+
+
+@pytest.mark.django_db
 def test_apply_schedule_changes_handles_multiple_changes(schedule_setup):
     second_location = _create_location()
     second_employee = _create_employee()

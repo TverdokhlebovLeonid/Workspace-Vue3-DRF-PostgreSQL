@@ -30,6 +30,7 @@ export function useScheduleEditor() {
   const cellIndex = ref<Map<CellKey, ScheduleGridCell>>(new Map())
   const original = ref<Map<CellKey, ScheduleGridCell>>(new Map())
   const dragOverKey = ref<CellKey | null>(null)
+  const errorKeys = ref<Set<CellKey>>(new Set())
   const currentStartDate = ref('')
   function loadFromGrid(grid: ScheduleGrid) {
     weeks.value = structuredClone(grid.weeks)
@@ -37,6 +38,7 @@ export function useScheduleEditor() {
     const indexed = indexGridCells(weeks.value)
     cellIndex.value = indexed.cellIndex
     original.value = indexed.snapshot
+    clearErrorKeys()
   }
   function isPastCell(key: CellKey): boolean {
     if (!currentStartDate.value) return false
@@ -61,6 +63,15 @@ export function useScheduleEditor() {
     return keys
   })
   const hasChanges = computed(() => dirtyKeys.value.length > 0)
+  function clearErrorKeys() {
+    errorKeys.value = new Set()
+  }
+  function setErrorKeys(keys: CellKey[]) {
+    errorKeys.value = new Set(keys)
+  }
+  function isError(key: CellKey): boolean {
+    return errorKeys.value.has(key)
+  }
   function swapCells(keyA: CellKey, keyB: CellKey) {
     if (keyA === keyB) return
     const cellA = getCell(keyA)
@@ -83,6 +94,7 @@ export function useScheduleEditor() {
   }
   function handleDrop(targetKey: CellKey, payload: DragPayload) {
     if (isPastCell(targetKey)) return
+    clearErrorKeys()
     if (payload.type === 'palette') {
       replaceCell(targetKey, payload.employee_id, payload.nickname)
       return
@@ -99,6 +111,7 @@ export function useScheduleEditor() {
         cell.nickname = baseline.nickname
       }
     }
+    clearErrorKeys()
     triggerRef(weeks)
   }
   function commitSaved(grid: ScheduleGrid) {
@@ -125,6 +138,10 @@ export function useScheduleEditor() {
     resetChanges,
     buildSavePayload,
     isDirty,
+    isError,
+    setErrorKeys,
+    clearErrorKeys,
+    getCell,
     makeCellKey,
     handleDrop
   }

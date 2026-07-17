@@ -16,6 +16,7 @@ declare module 'axios' {
   export interface AxiosRequestConfig {
     isRefreshToken?: boolean
     _retry?: boolean
+    skipGlobalError?: boolean
   }
 }
 const Http = axios.create({
@@ -71,7 +72,9 @@ Http.interceptors.response.use(
         return Promise.reject(error)
       }
     }
-    setNotification(getErrorMessage(error))
+    if (!originalRequest.skipGlobalError) {
+      setNotification(getErrorMessage(error))
+    }
     return Promise.reject(error)
   }
 )

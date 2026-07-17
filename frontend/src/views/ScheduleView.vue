@@ -14,6 +14,8 @@ import { useScheduleHistoryScroll } from '@/composables/useScheduleHistoryScroll
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationStore } from '@/stores/notification'
 import type { Employee, ScheduleGrid as ScheduleGridType } from '@/types/schedules'
+import { getApiErrorBody, getApiErrorDetail } from '@/utils/apiError'
+import { resolveScheduleSaveErrorKeys } from '@/utils/scheduleSaveError'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
@@ -31,7 +33,11 @@ const {
   loadFromGrid,
   commitSaved,
   resetChanges,
-  buildSavePayload
+  buildSavePayload,
+  isError,
+  setErrorKeys,
+  clearErrorKeys,
+  getCell
 } = useScheduleEditor()
 const grid = ref<ScheduleGridType | null>(null)
 const employees = ref<Employee[]>([])
@@ -89,14 +95,34 @@ async function handleSave() {
   if (!hasChanges.value) return
   saving.value = true
   errorMessage.value = ''
+  clearErrorKeys()
   try {
     const result = await schedulesApi.saveChanges(buildSavePayload())
     grid.value = result.grid
     commitSaved(result.grid)
     resetHistory()
     notificationStore.add({ text: t('schedule.saveSuccess'), type: 'success' })
-  } catch {
-    errorMessage.value = t('schedule.saveError')
+  } catch (error) {
+    const body = getApiErrorBody(error)
+    if (body?.code === 'employee_not_assigned_to_location' && body.employee_nickname && body.location_name) {
+      errorMessage.value = t('schedule.errors.employeeNotAtLocation', {
+        name: body.employee_nickname,
+        location: body.location_name
+      })
+    } else {
+      errorMessage.value = getApiErrorDetail(error) ?? t('schedule.saveError')
+    }
+    if (body) {
+      setErrorKeys(
+        resolveScheduleSaveErrorKeys({
+          body,
+          dirtyKeys: dirtyKeys.value,
+          getCell,
+          employees: employees.value
+        })
+      )
+    }
+    notificationStore.add({ text: errorMessage.value, type: 'error' })
   } finally {
     saving.value = false
   }
@@ -164,6 +190,7 @@ onMounted(loadGrid)
         :weeks="displayWeeks"
         :employees="employees"
         :is-dirty="isDirty"
+        :is-error="isError"
         :drag-over-key="dragOverKey"
         :loading-history="loadingHistory"
         @drop="handleDrop"

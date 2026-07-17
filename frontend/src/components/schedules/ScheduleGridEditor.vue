@@ -15,6 +15,7 @@ const props = defineProps<{
   weeks: ScheduleGridWeek[]
   employees: Employee[]
   isDirty: (key: CellKey) => boolean
+  isError: (key: CellKey) => boolean
   dragOverKey: CellKey | null
   loadingHistory?: boolean
 }>()
@@ -78,7 +79,11 @@ function cellClasses(key: CellKey, weekend: boolean, isPast: boolean) {
       ? 'cursor-default text-neutral-500'
       : 'cursor-grab text-ink active:cursor-grabbing select-none',
     weekend && 'bg-[#ba002b]/5',
-    !isPast && props.isDirty(key) && 'bg-amber-100 ring-2 ring-inset ring-amber-400 font-medium',
+    !isPast && props.isError(key) && 'bg-red-100 ring-2 ring-inset ring-red-500 font-medium text-red-900',
+    !isPast &&
+      !props.isError(key) &&
+      props.isDirty(key) &&
+      'bg-amber-100 ring-2 ring-inset ring-amber-400 font-medium',
     !isPast && props.dragOverKey === key && 'bg-brand-50 ring-2 ring-inset ring-brand-400'
   ]
 }

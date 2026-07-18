@@ -7,6 +7,7 @@ import UiInput from '@/components/ui/UiInput.vue'
 import UiLogo from '@/components/ui/UiLogo.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationStore } from '@/stores/notification'
+import { sanitizeRedirectPath } from '@/utils/redirect'
 import { isAxiosError } from 'axios'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -21,10 +22,7 @@ const username = ref('')
 const password = ref('')
 const usernameError = ref('')
 const passwordError = ref('')
-const redirectPath = computed(() => {
-  const redirect = route.query.redirect
-  return typeof redirect === 'string' ? redirect : '/schedule'
-})
+const redirectPath = computed(() => sanitizeRedirectPath(route.query.redirect))
 function validate() {
   usernameError.value = username.value.trim() ? '' : t('login.usernameRequired')
   passwordError.value = password.value ? '' : t('login.passwordRequired')

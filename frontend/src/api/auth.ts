@@ -24,7 +24,7 @@ const refreshToken = async (refresh: string) => {
   const { data } = await Http.post<AuthTokens>(
     `${API_AUTH_PREFIX}/jwt/refresh/`,
     { refresh },
-    { isRefreshToken: true }
+    { isRefreshToken: true, skipGlobalError: true }
   )
   if (data.access) setAccessToken(data.access)
   if (data.refresh) saveDataInStorage(TOKEN_KEY.refresh, data.refresh)

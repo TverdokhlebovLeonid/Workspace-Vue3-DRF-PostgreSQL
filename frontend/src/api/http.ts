@@ -37,6 +37,18 @@ async function redirectToLogin() {
   useAuthStore().logout()
   await router.replace({ name: 'login' })
 }
+let refreshPromise: Promise<string> | null = null
+function refreshAccessToken(refresh: string): Promise<string> {
+  if (!refreshPromise) {
+    refreshPromise = authApi
+      .refreshToken(refresh)
+      .then((data) => data.access)
+      .finally(() => {
+        refreshPromise = null
+      })
+  }
+  return refreshPromise
+}
 Http.interceptors.response.use(
   (response) => Promise.resolve(response),
   async (error) => {
@@ -54,17 +66,16 @@ Http.interceptors.response.use(
     }
     if (response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true
+      const refreshToken = getDataFromStorage<string>(TOKEN_KEY.refresh)
+      if (!refreshToken) {
+        await redirectToLogin()
+        return Promise.reject(error)
+      }
       try {
-        const refreshToken = getDataFromStorage<string>(TOKEN_KEY.refresh)
-        if (!refreshToken) {
-          const msg = getErrorMessage(error)
-          setNotification(msg)
-          return Promise.reject(error)
-        }
-        await authApi.refreshToken(refreshToken)
-        const tokenNew = getDataFromStorage<string>(TOKEN_KEY.access)
+        const tokenNew = await refreshAccessToken(refreshToken)
         setHeadersToken(tokenNew)
         useAuthStore().syncAccessToken()
+        originalRequest.headers = originalRequest.headers ?? {}
         originalRequest.headers.Authorization = `Bearer ${tokenNew}`
         return Http.request(originalRequest)
       } catch {

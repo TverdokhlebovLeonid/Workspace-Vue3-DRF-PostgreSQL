@@ -8,7 +8,7 @@ export type LoginCredentials = {
 }
 export type AuthTokens = {
   access: string
-  refresh: string
+  refresh?: string
 }
 export type User = {
   id: EntityId

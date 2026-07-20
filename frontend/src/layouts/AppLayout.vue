@@ -40,7 +40,7 @@ const visibleNavItems = computed(() =>
   navItems.filter((item) => !item.adminOnly || authStore.isAdmin)
 )
 async function handleLogout() {
-  authStore.logout()
+  await authStore.logout()
   await router.replace({ name: 'login' })
 }
 </script>

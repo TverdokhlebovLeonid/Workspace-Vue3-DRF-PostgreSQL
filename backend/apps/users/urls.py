@@ -3,6 +3,7 @@ from django.urls import path
 from apps.users.views import (
     ChangePasswordView,
     HealthView,
+    LogoutView,
     MeView,
     PublicTokenObtainPairView,
     PublicTokenRefreshView,
@@ -14,6 +15,7 @@ urlpatterns = [
     path('health/', HealthView.as_view(), name='health'),
     path('jwt/create/', PublicTokenObtainPairView.as_view(), name='jwt-create'),
     path('jwt/refresh/', PublicTokenRefreshView.as_view(), name='jwt-refresh'),
+    path('logout/', LogoutView.as_view(), name='logout'),
     path('me/', MeView.as_view(), name='me'),
     path('me/password/', ChangePasswordView.as_view(), name='me-password'),
     path('users/', UserListCreateView.as_view(), name='users'),

@@ -1,4 +1,4 @@
-import { TOKEN_KEY, USER_ROLE } from '@/api/enum'
+import { USER_ROLE } from '@/api/enum'
 import authApi from '@/api/auth'
 import usersApi from '@/api/users'
 import {
@@ -9,20 +9,17 @@ import {
   saveGuestLanguage,
   type AppLanguage
 } from '@/i18n'
-import { clearToken } from '@/services/authToken'
-import { getDataFromStorage } from '@/services/localStorage'
+import { clearToken, getAccessToken } from '@/services/authToken'
 import { useNotificationStore } from '@/stores/notification'
 import type { LoginCredentials, User } from '@/types/auth'
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-function readAccessToken(): string | null {
-  return getDataFromStorage<string>(TOKEN_KEY.access)
-}
+
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<User | null>(null)
   const initialized = ref(false)
   const loading = ref(false)
-  const accessToken = ref<string | null>(readAccessToken())
+  const accessToken = ref<string | null>(getAccessToken())
   const language = ref<AppLanguage>(readGuestLanguage())
   const isAuthenticated = computed(() => Boolean(accessToken.value))
   const username = computed(() => user.value?.username ?? '')
@@ -34,13 +31,23 @@ export const useAuthStore = defineStore('auth', () => {
     const fullName = [current.last_name, current.first_name].filter(Boolean).join(' ')
     return fullName || current.username
   })
+
   function syncAccessToken() {
-    accessToken.value = readAccessToken()
+    accessToken.value = getAccessToken()
   }
+
   function applyLanguage(next: AppLanguage) {
     language.value = next
     applyLocale(next)
   }
+
+  function logoutLocal() {
+    clearToken()
+    accessToken.value = null
+    user.value = null
+    applyLanguage(readGuestLanguage())
+  }
+
   async function setLanguage(next: AppLanguage) {
     applyLanguage(next)
     if (!isAuthenticated.value) {
@@ -57,22 +64,50 @@ export const useAuthStore = defineStore('auth', () => {
       applyLanguage(resolveUserLanguage(user.value?.language))
     }
   }
+
+  async function restoreSession() {
+    if (!getAccessToken()) {
+      try {
+        await authApi.refreshToken({ skipLoginRedirect: true })
+        syncAccessToken()
+      } catch {
+        logoutLocal()
+        return false
+      }
+    }
+    try {
+      user.value = await usersApi.getMe()
+      applyLanguage(resolveUserLanguage(user.value.language))
+      syncAccessToken()
+      return true
+    } catch {
+      logoutLocal()
+      return false
+    }
+  }
+
   async function initialize() {
     if (initialized.value) return
     initialized.value = true
     syncAccessToken()
     if (!accessToken.value) {
-      user.value = null
-      applyLanguage(readGuestLanguage())
+      await restoreSession()
+      if (!accessToken.value) {
+        applyLanguage(readGuestLanguage())
+      }
       return
     }
     try {
       user.value = await usersApi.getMe()
       applyLanguage(resolveUserLanguage(user.value.language))
     } catch {
-      logout()
+      const restored = await restoreSession()
+      if (!restored) {
+        applyLanguage(readGuestLanguage())
+      }
     }
   }
+
   async function login(credentials: LoginCredentials) {
     loading.value = true
     try {
@@ -84,12 +119,12 @@ export const useAuthStore = defineStore('auth', () => {
       loading.value = false
     }
   }
-  function logout() {
-    clearToken()
-    accessToken.value = null
-    user.value = null
-    applyLanguage(readGuestLanguage())
+
+  async function logout() {
+    await authApi.logout()
+    logoutLocal()
   }
+
   return {
     user,
     initialized,
@@ -103,6 +138,7 @@ export const useAuthStore = defineStore('auth', () => {
     initialize,
     login,
     logout,
+    logoutLocal,
     setLanguage,
     syncAccessToken
   }

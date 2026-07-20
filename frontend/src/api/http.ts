@@ -1,26 +1,26 @@
 import authApi from '@/api/auth'
 import { API_BASE_URL } from '@/api/constants'
-import { TOKEN_KEY } from '@/api/enum'
 import { i18n } from '@/i18n'
-import { getDataFromStorage } from '@/services/localStorage'
-import { setHeadersToken } from '@/services/authToken'
+import { getAccessToken, setHeadersToken } from '@/services/authToken'
 import { useAuthStore } from '@/stores/auth'
 import { useNotificationStore } from '@/stores/notification'
 import axios, { isAxiosError, type CreateAxiosDefaults } from 'axios'
 import router from '@/router'
 
 type AxiosDefaultHeaders = CreateAxiosDefaults['headers']
-const token = getDataFromStorage<string>(TOKEN_KEY.access)
+const token = getAccessToken()
 const headerToken: AxiosDefaultHeaders = token ? { Authorization: `Bearer ${token}` } : {}
 declare module 'axios' {
   export interface AxiosRequestConfig {
     isRefreshToken?: boolean
     _retry?: boolean
     skipGlobalError?: boolean
+    skipLoginRedirect?: boolean
   }
 }
 const Http = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
   headers: {
     ...headerToken
   } as AxiosDefaultHeaders
@@ -34,14 +34,14 @@ const setNotification = (msg: string | undefined) => {
   })
 }
 async function redirectToLogin() {
-  useAuthStore().logout()
+  useAuthStore().logoutLocal()
   await router.replace({ name: 'login' })
 }
 let refreshPromise: Promise<string> | null = null
-function refreshAccessToken(refresh: string): Promise<string> {
+function refreshAccessToken(): Promise<string> {
   if (!refreshPromise) {
     refreshPromise = authApi
-      .refreshToken(refresh)
+      .refreshToken()
       .then((data) => data.access)
       .finally(() => {
         refreshPromise = null
@@ -61,18 +61,16 @@ Http.interceptors.response.use(
     }
     const response = error.response
     if (originalRequest.isRefreshToken) {
-      await redirectToLogin()
+      useAuthStore().logoutLocal()
+      if (!originalRequest.skipLoginRedirect) {
+        await router.replace({ name: 'login' })
+      }
       return Promise.reject(error)
     }
     if (response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true
-      const refreshToken = getDataFromStorage<string>(TOKEN_KEY.refresh)
-      if (!refreshToken) {
-        await redirectToLogin()
-        return Promise.reject(error)
-      }
       try {
-        const tokenNew = await refreshAccessToken(refreshToken)
+        const tokenNew = await refreshAccessToken()
         setHeadersToken(tokenNew)
         useAuthStore().syncAccessToken()
         originalRequest.headers = originalRequest.headers ?? {}

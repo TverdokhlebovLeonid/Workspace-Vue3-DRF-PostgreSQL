@@ -6,9 +6,12 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from apps.common.permissions import IsAdminRole
+from apps.users.auth_cookies import REFRESH_COOKIE_NAME, clear_refresh_cookie, set_refresh_cookie
 from apps.users.models import User, UserRole
 from apps.users.serializers import (
     ChangePasswordSerializer,
@@ -27,11 +30,51 @@ class PublicTokenObtainPairView(TokenObtainPairView):
     authentication_classes = ()
     throttle_classes = (AuthRateThrottle,)
 
+    def post(self, request, *args, **kwargs):
+        response = super().post(request, *args, **kwargs)
+        if response.status_code == 200 and isinstance(response.data, dict):
+            refresh = response.data.pop('refresh', None)
+            if refresh:
+                set_refresh_cookie(response, refresh)
+        return response
+
 
 class PublicTokenRefreshView(TokenRefreshView):
     permission_classes = (AllowAny,)
     authentication_classes = ()
     throttle_classes = (AuthRateThrottle,)
+
+    def post(self, request, *args, **kwargs):
+        refresh = None
+        if isinstance(request.data, dict):
+            refresh = request.data.get('refresh')
+        refresh = refresh or request.COOKIES.get(REFRESH_COOKIE_NAME)
+        if not refresh:
+            return Response(
+                {'detail': 'Refresh token not found.'},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+        serializer = TokenRefreshSerializer(data={'refresh': refresh})
+        try:
+            serializer.is_valid(raise_exception=True)
+        except TokenError as exc:
+            raise InvalidToken(exc.args[0]) from exc
+        data = dict(serializer.validated_data)
+        new_refresh = data.pop('refresh', None)
+        response = Response({'access': data['access']}, status=status.HTTP_200_OK)
+        if new_refresh:
+            set_refresh_cookie(response, new_refresh)
+        return response
+
+
+class LogoutView(APIView):
+    permission_classes = (IsAuthenticated,)
+
+    @extend_schema(request=None, responses={200: dict})
+    def post(self, request):
+        response = Response({'detail': 'Logged out.'}, status=status.HTTP_200_OK)
+        clear_refresh_cookie(response)
+        return response
 
 
 @extend_schema(responses=UserSerializer)

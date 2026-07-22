@@ -8,6 +8,7 @@ from apps.users.serializers import (
     UserProfileUpdateSerializer,
     UserSerializer,
 )
+from conftest import VALID_TEST_PASSWORD
 
 factory = APIRequestFactory()
 
@@ -76,14 +77,14 @@ def test_user_create_creates_regular_user():
         data={
             'username': 'new-user',
             'email': 'new@example.com',
-            'password': 'password123',
+            'password': VALID_TEST_PASSWORD,
         }
     )
     assert serializer.is_valid(), serializer.errors
     created = serializer.save()
     assert created.role == UserRole.USER
     assert created.is_staff is False
-    assert created.check_password('password123')
+    assert created.check_password(VALID_TEST_PASSWORD)
 
 
 @pytest.mark.django_db
@@ -92,7 +93,7 @@ def test_user_create_creates_admin_with_staff_flag():
         data={
             'username': 'new-admin',
             'email': 'admin@example.com',
-            'password': 'password123',
+            'password': VALID_TEST_PASSWORD,
             'role': UserRole.ADMIN,
         }
     )
@@ -108,7 +109,7 @@ def test_user_create_rejects_invalid_role():
         data={
             'username': 'bad-role',
             'email': 'bad@example.com',
-            'password': 'password123',
+            'password': VALID_TEST_PASSWORD,
             'role': 'SUPERUSER',
         }
     )

@@ -3,6 +3,8 @@ from rest_framework.test import APIClient
 
 from apps.users.models import User, UserRole
 
+VALID_TEST_PASSWORD = 'ValidPass123!'
+
 
 @pytest.fixture
 def user(db):

@@ -11,6 +11,7 @@ from apps.schedules.serializers import (
 )
 from apps.schedules.services.employee_users import create_employee_with_user
 from apps.users.models import User
+from conftest import VALID_TEST_PASSWORD
 
 
 def _create_location(**overrides) -> Location:
@@ -90,7 +91,7 @@ def test_employee_serializer_creates_with_password_and_relations():
     payload = _employee_payload(
         location_ids=[location.id],
         work_rule_ids=[work_rule.id],
-        password='password123',
+        password=VALID_TEST_PASSWORD,
     )
     serializer = EmployeeSerializer(data=payload)
     assert serializer.is_valid(), serializer.errors
@@ -130,7 +131,7 @@ def test_employee_serializer_has_user_false_without_linked_user():
 def test_employee_serializer_has_user_true_with_linked_user():
     employee = create_employee_with_user(
         employee_data=_employee_payload(),
-        password='password123',
+        password=VALID_TEST_PASSWORD,
         locations=[],
         work_rules=[],
     )
@@ -144,7 +145,7 @@ def test_employee_serializer_read_nested_locations_and_rules():
     work_rule = _create_work_rule()
     employee = create_employee_with_user(
         employee_data=_employee_payload(),
-        password='password123',
+        password=VALID_TEST_PASSWORD,
         locations=[location],
         work_rules=[work_rule],
     )
@@ -159,7 +160,7 @@ def test_employee_serializer_read_nested_locations_and_rules():
 def test_employee_serializer_update_without_password():
     employee = create_employee_with_user(
         employee_data=_employee_payload(nickname='old-nick'),
-        password='password123',
+        password=VALID_TEST_PASSWORD,
         locations=[],
         work_rules=[],
     )
@@ -180,7 +181,7 @@ def test_employee_serializer_location_ids_excludes_inactive_locations():
     serializer = EmployeeSerializer(
         data=_employee_payload(
             location_ids=[inactive_location.id],
-            password='password123',
+            password=VALID_TEST_PASSWORD,
         )
     )
     assert serializer.is_valid() is False

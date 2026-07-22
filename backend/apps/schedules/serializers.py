@@ -2,6 +2,7 @@ from rest_framework import serializers
 
 from apps.schedules.models import Employee, Location, ScheduleShift, WorkRule
 from apps.schedules.services.employee_users import create_employee_with_user, update_employee_user
+from apps.users.password_validation import validate_user_password
 
 
 class LocationSerializer(serializers.ModelSerializer):
@@ -33,9 +34,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
     )
     locations = LocationSerializer(many=True, read_only=True)
     work_rules = WorkRuleSerializer(many=True, read_only=True)
-    password = serializers.CharField(
-        write_only=True, min_length=8, required=False, allow_blank=True
-    )
+    password = serializers.CharField(write_only=True, required=False, allow_blank=True)
     has_user = serializers.SerializerMethodField()
 
     class Meta:
@@ -59,6 +58,12 @@ class EmployeeSerializer(serializers.ModelSerializer):
 
     def get_has_user(self, obj: Employee) -> bool:
         return bool(obj.user_id)
+
+    def validate_password(self, value: str) -> str:
+        if not value:
+            return value
+        user = self.instance.user if self.instance and self.instance.user_id else None
+        return validate_user_password(value, user=user)
 
     def validate(self, attrs):
         password = attrs.get('password', '')

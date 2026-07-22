@@ -5,12 +5,16 @@ import UiButton from '@/components/ui/UiButton.vue'
 import UiCard from '@/components/ui/UiCard.vue'
 import UiContainer from '@/components/ui/UiContainer.vue'
 import UiInput from '@/components/ui/UiInput.vue'
+import { useAuthStore } from '@/stores/auth'
 import { useNotificationStore } from '@/stores/notification'
 import { computed, reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 
 const { t } = useI18n()
+const authStore = useAuthStore()
 const notificationStore = useNotificationStore()
+const router = useRouter()
 const saving = ref(false)
 const errorMessage = ref('')
 const form = reactive({
@@ -84,6 +88,8 @@ async function handleSubmit() {
     })
     notificationStore.add({ text: t('profile.success'), type: 'success' })
     resetForm()
+    authStore.logoutLocal()
+    await router.replace({ name: 'login' })
   } catch {
     errorMessage.value = t('profile.saveError')
   } finally {

@@ -1,5 +1,7 @@
 from django.conf import settings
 from django.http import HttpResponse
+from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
+from rest_framework_simplejwt.tokens import RefreshToken
 
 REFRESH_COOKIE_NAME = 'refresh_token'
 REFRESH_COOKIE_PATH = '/api/auth/'
@@ -33,3 +35,17 @@ def clear_refresh_cookie(response: HttpResponse) -> None:
         secure=_cookie_secure(),
         samesite='Lax',
     )
+
+
+def blacklist_refresh_token(raw_token: str | None) -> None:
+    if not raw_token:
+        return
+    try:
+        RefreshToken(raw_token).blacklist()
+    except Exception:
+        return
+
+
+def blacklist_user_tokens(user) -> None:
+    for outstanding in OutstandingToken.objects.filter(user_id=user.pk):
+        BlacklistedToken.objects.get_or_create(token=outstanding)

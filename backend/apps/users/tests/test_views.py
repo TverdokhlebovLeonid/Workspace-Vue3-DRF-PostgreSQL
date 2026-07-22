@@ -5,6 +5,7 @@ from django.urls import reverse
 from rest_framework import status
 
 from apps.users.models import User, UserLanguage, UserRole
+from conftest import VALID_TEST_PASSWORD
 
 ME_URL = reverse('me')
 PASSWORD_URL = reverse('me-password')
@@ -84,7 +85,7 @@ def test_admin_can_create_user(admin_client):
         {
             'username': 'created-user',
             'email': 'created@example.com',
-            'password': 'password123',
+            'password': VALID_TEST_PASSWORD,
             'role': UserRole.USER,
         },
         format='json',
@@ -92,7 +93,7 @@ def test_admin_can_create_user(admin_client):
     assert response.status_code == status.HTTP_201_CREATED
     created = User.objects.get(username='created-user')
     assert created.role == UserRole.USER
-    assert created.check_password('password123')
+    assert created.check_password(VALID_TEST_PASSWORD)
 
 
 @pytest.mark.django_db

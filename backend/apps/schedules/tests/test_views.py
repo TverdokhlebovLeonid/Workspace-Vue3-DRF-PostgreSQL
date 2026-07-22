@@ -16,6 +16,7 @@ from apps.schedules.models import (
 )
 from apps.schedules.services.constants import DAYS_IN_GRID
 from apps.users.models import User
+from conftest import VALID_TEST_PASSWORD
 
 LOCATIONS_URL = reverse('schedule-locations')
 EMPLOYEES_URL = reverse('schedule-employees')
@@ -163,7 +164,7 @@ def test_admin_can_create_employee(admin_client):
             'first_name': 'Petr',
             'nickname': nickname,
             'email': 'petr@example.com',
-            'password': 'password123',
+            'password': VALID_TEST_PASSWORD,
         },
         format='json',
     )
@@ -182,7 +183,7 @@ def test_admin_can_delete_employee_and_linked_user(admin_client):
             'last_name': 'Delete',
             'first_name': 'Me',
             'nickname': nickname,
-            'password': 'password123',
+            'password': VALID_TEST_PASSWORD,
         },
         format='json',
     )

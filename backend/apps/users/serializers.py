@@ -1,6 +1,7 @@
 from rest_framework import serializers
 
 from apps.users.models import User, UserLanguage, UserRole
+from apps.users.password_validation import validate_user_password
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -23,7 +24,7 @@ class UserProfileUpdateSerializer(serializers.ModelSerializer):
 
 class ChangePasswordSerializer(serializers.Serializer):
     current_password = serializers.CharField(write_only=True)
-    new_password = serializers.CharField(write_only=True, min_length=8)
+    new_password = serializers.CharField(write_only=True)
 
     def validate_current_password(self, value: str) -> str:
         user = self.context['request'].user
@@ -31,9 +32,12 @@ class ChangePasswordSerializer(serializers.Serializer):
             raise serializers.ValidationError('Incorrect current password.')
         return value
 
+    def validate_new_password(self, value: str) -> str:
+        return validate_user_password(value, user=self.context['request'].user)
+
 
 class UserCreateSerializer(serializers.ModelSerializer):
-    password = serializers.CharField(write_only=True, min_length=8)
+    password = serializers.CharField(write_only=True)
 
     class Meta:
         model = User
@@ -43,6 +47,9 @@ class UserCreateSerializer(serializers.ModelSerializer):
         if value not in UserRole.values:
             raise serializers.ValidationError('Invalid role.')
         return value
+
+    def validate_password(self, value: str) -> str:
+        return validate_user_password(value)
 
     def create(self, validated_data):
         password = validated_data.pop('password')

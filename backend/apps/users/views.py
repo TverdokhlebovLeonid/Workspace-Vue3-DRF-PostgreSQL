@@ -11,7 +11,13 @@ from rest_framework_simplejwt.serializers import TokenRefreshSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 from apps.common.permissions import IsAdminRole
-from apps.users.auth_cookies import REFRESH_COOKIE_NAME, clear_refresh_cookie, set_refresh_cookie
+from apps.users.auth_cookies import (
+    REFRESH_COOKIE_NAME,
+    blacklist_refresh_token,
+    blacklist_user_tokens,
+    clear_refresh_cookie,
+    set_refresh_cookie,
+)
 from apps.users.models import User, UserRole
 from apps.users.serializers import (
     ChangePasswordSerializer,
@@ -72,6 +78,10 @@ class LogoutView(APIView):
 
     @extend_schema(request=None, responses={200: dict})
     def post(self, request):
+        refresh = request.COOKIES.get(REFRESH_COOKIE_NAME)
+        if isinstance(request.data, dict):
+            refresh = request.data.get('refresh') or refresh
+        blacklist_refresh_token(refresh)
         response = Response({'detail': 'Logged out.'}, status=status.HTTP_200_OK)
         clear_refresh_cookie(response)
         return response
@@ -108,7 +118,10 @@ class ChangePasswordView(APIView):
         serializer.is_valid(raise_exception=True)
         request.user.set_password(serializer.validated_data['new_password'])
         request.user.save(update_fields=['password'])
-        return Response({'detail': 'Password updated.'})
+        blacklist_user_tokens(request.user)
+        response = Response({'detail': 'Password updated.'})
+        clear_refresh_cookie(response)
+        return response
 
 
 @extend_schema(responses=UserSerializer(many=True))

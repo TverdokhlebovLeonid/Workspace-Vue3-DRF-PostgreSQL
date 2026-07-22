@@ -1,12 +1,15 @@
 import pytest
 from django.urls import reverse
 from rest_framework import status
+from rest_framework_simplejwt.token_blacklist.models import BlacklistedToken, OutstandingToken
+from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.users.auth_cookies import REFRESH_COOKIE_NAME
 
 JWT_CREATE_URL = reverse('jwt-create')
 JWT_REFRESH_URL = reverse('jwt-refresh')
 LOGOUT_URL = reverse('logout')
+PASSWORD_URL = reverse('me-password')
 
 
 @pytest.mark.django_db
@@ -47,19 +50,39 @@ def test_refresh_without_cookie_returns_401(api_client):
 
 
 @pytest.mark.django_db
-def test_logout_clears_refresh_cookie(api_client, user):
+def test_logout_blacklists_refresh_and_clears_cookie(api_client, user):
     login = api_client.post(
         JWT_CREATE_URL,
         {'username': user.username, 'password': 'password123'},
         format='json',
     )
+    refresh_value = login.cookies[REFRESH_COOKIE_NAME].value
     api_client.credentials(HTTP_AUTHORIZATION=f'Bearer {login.data["access"]}')
-    api_client.cookies[REFRESH_COOKIE_NAME] = login.cookies[REFRESH_COOKIE_NAME].value
+    api_client.cookies[REFRESH_COOKIE_NAME] = refresh_value
     response = api_client.post(LOGOUT_URL, {}, format='json')
     assert response.status_code == status.HTTP_200_OK
     cleared = response.cookies[REFRESH_COOKIE_NAME]
     assert cleared.value == ''
     assert cleared['path'] == '/api/auth/'
+    refresh = api_client.post(JWT_REFRESH_URL, {'refresh': refresh_value}, format='json')
+    assert refresh.status_code == status.HTTP_401_UNAUTHORIZED
+
+
+@pytest.mark.django_db
+def test_change_password_blacklists_outstanding_tokens(auth_client, user):
+    RefreshToken.for_user(user)
+    assert OutstandingToken.objects.filter(user=user).exists()
+    response = auth_client.post(
+        PASSWORD_URL,
+        {'current_password': 'password123', 'new_password': 'newpassword1'},
+        format='json',
+    )
+    assert response.status_code == status.HTTP_200_OK
+    outstanding_ids = OutstandingToken.objects.filter(user=user).values_list('id', flat=True)
+    assert outstanding_ids
+    assert BlacklistedToken.objects.filter(token_id__in=outstanding_ids).count() == len(
+        list(outstanding_ids)
+    )
 
 
 @pytest.mark.django_db

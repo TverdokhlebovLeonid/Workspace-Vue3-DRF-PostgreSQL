@@ -3,14 +3,42 @@ import os
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
+from PIL import Image, UnidentifiedImageError
 
 from apps.common.models import UUIDModel
+
+ALLOWED_IMAGE_EXTENSIONS = ('.png', '.jpg', '.jpeg')
+ALLOWED_IMAGE_FORMATS = {'PNG', 'JPEG'}
 
 
 def validate_document_image(file) -> None:
     ext = os.path.splitext(file.name)[1].lower()
-    if ext not in ('.png', '.jpg', '.jpeg'):
+    if ext not in ALLOWED_IMAGE_EXTENSIONS:
         raise ValidationError('Only PNG and JPG are allowed.')
+
+    max_bytes = getattr(settings, 'DOCUMENT_MAX_UPLOAD_BYTES', 5 * 1024 * 1024)
+    size = getattr(file, 'size', None)
+    if size is not None and size > max_bytes:
+        raise ValidationError(f'File is too large (max {max_bytes // (1024 * 1024)} MB).')
+
+    try:
+        file.seek(0)
+        with Image.open(file) as image:
+            image.verify()
+        file.seek(0)
+        with Image.open(file) as image:
+            image.load()
+            if image.format not in ALLOWED_IMAGE_FORMATS:
+                raise ValidationError('Only PNG and JPG are allowed.')
+    except ValidationError:
+        raise
+    except (UnidentifiedImageError, OSError) as exc:
+        raise ValidationError('Invalid image file.') from exc
+    finally:
+        try:
+            file.seek(0)
+        except Exception:
+            pass
 
 
 class Document(UUIDModel):

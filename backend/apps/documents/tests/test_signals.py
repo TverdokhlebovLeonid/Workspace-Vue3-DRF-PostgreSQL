@@ -2,18 +2,14 @@ import os
 
 import pytest
 from django.core.files.storage import default_storage
-from django.core.files.uploadedfile import SimpleUploadedFile
 
 from apps.documents.models import Document
 from apps.documents.signals import delete_document_file
-
-
-def _uploaded_file(name: str = 'scan.png') -> SimpleUploadedFile:
-    return SimpleUploadedFile(name, b'image-content', content_type='image/png')
+from apps.documents.tests.image_helpers import uploaded_png
 
 
 def _create_document(*, title: str = 'Manual', filename: str = 'folder/manual.png') -> Document:
-    return Document.objects.create(title=title, file=_uploaded_file(filename))
+    return Document.objects.create(title=title, file=uploaded_png(filename))
 
 
 @pytest.mark.django_db

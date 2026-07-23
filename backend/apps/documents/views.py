@@ -1,4 +1,5 @@
 import mimetypes
+import os
 
 from django.http import FileResponse, Http404
 from drf_spectacular.utils import extend_schema
@@ -113,9 +114,10 @@ class DocumentDownloadView(APIView):
         if not document.file:
             raise Http404
         content_type, _ = mimetypes.guess_type(document.file.name)
-        response = FileResponse(
-            document.file.open('rb'), content_type=content_type or 'application/octet-stream'
+        filename = os.path.basename(document.file.name)
+        return FileResponse(
+            document.file.open('rb'),
+            as_attachment=True,
+            filename=filename,
+            content_type=content_type or 'application/octet-stream',
         )
-        filename = document.file.name.split('/')[-1]
-        response['Content-Disposition'] = f'attachment; filename="{filename}"'
-        return response

@@ -7,6 +7,7 @@ from rest_framework import status
 from rest_framework.test import APIClient
 
 from apps.documents.models import Document, DocumentAccess
+from apps.documents.tests.image_helpers import make_png_bytes, uploaded_png
 from apps.schedules.models import Employee
 from apps.schedules.services.employee_users import create_employee_with_user
 from apps.users.models import User
@@ -26,12 +27,8 @@ def document_download_url(document_id):
     return reverse('documents-download', args=[document_id])
 
 
-def _uploaded_file(name: str = 'scan.png') -> SimpleUploadedFile:
-    return SimpleUploadedFile(name, b'image-content', content_type='image/png')
-
-
 def _create_document(*, title: str = 'Manual') -> Document:
-    return Document.objects.create(title=title, file=_uploaded_file('folder/manual.png'))
+    return Document.objects.create(title=title, file=uploaded_png('folder/manual.png'))
 
 
 def _create_employee(nickname: str | None = None) -> Employee:
@@ -115,7 +112,7 @@ def test_documents_list_shows_all_for_admin_with_access_info(admin_client, admin
 def test_documents_upload_forbidden_for_regular_user(auth_client, media_root):
     response = auth_client.post(
         DOCUMENTS_URL,
-        {'title': 'Secret', 'file': _uploaded_file('upload.png')},
+        {'title': 'Secret', 'file': uploaded_png('upload.png')},
         format='multipart',
     )
     assert response.status_code == status.HTTP_403_FORBIDDEN
@@ -126,7 +123,7 @@ def test_documents_upload_forbidden_for_regular_user(auth_client, media_root):
 def test_admin_can_upload_document(admin_client, admin_user, media_root):
     response = admin_client.post(
         DOCUMENTS_URL,
-        {'title': 'Uploaded', 'file': _uploaded_file('upload.png')},
+        {'title': 'Uploaded', 'file': uploaded_png('upload.png')},
         format='multipart',
     )
     assert response.status_code == status.HTTP_201_CREATED
@@ -201,7 +198,37 @@ def test_employee_can_download_with_access(media_root):
     DocumentAccess.objects.create(document=document, employee=employee)
     response = _employee_client(user).get(document_download_url(document.pk))
     assert response.status_code == status.HTTP_200_OK
-    assert b'image-content' in b''.join(response.streaming_content)
+    content = b''.join(response.streaming_content)
+    assert content.startswith(b'\x89PNG')
+
+
+@pytest.mark.django_db
+def test_admin_upload_rejects_non_image_content(admin_client, media_root):
+    fake = SimpleUploadedFile('fake.png', b'not-an-image', content_type='image/png')
+    response = admin_client.post(
+        DOCUMENTS_URL,
+        {'title': 'Bad', 'file': fake},
+        format='multipart',
+    )
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert Document.objects.count() == 0
+
+
+@pytest.mark.django_db
+def test_admin_upload_rejects_oversized_image(admin_client, media_root, settings):
+    settings.DOCUMENT_MAX_UPLOAD_BYTES = 100
+    oversized = SimpleUploadedFile(
+        'big.png',
+        make_png_bytes((200, 200)),
+        content_type='image/png',
+    )
+    response = admin_client.post(
+        DOCUMENTS_URL,
+        {'title': 'Big', 'file': oversized},
+        format='multipart',
+    )
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert Document.objects.count() == 0
 
 
 @pytest.mark.django_db

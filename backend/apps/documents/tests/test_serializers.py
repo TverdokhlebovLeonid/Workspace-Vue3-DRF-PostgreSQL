@@ -1,7 +1,6 @@
 from uuid import uuid4
 
 import pytest
-from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework.test import APIRequestFactory
 
 from apps.documents.models import Document, DocumentAccess
@@ -10,17 +9,14 @@ from apps.documents.serializers import (
     DocumentSerializer,
     DocumentUploadSerializer,
 )
+from apps.documents.tests.image_helpers import uploaded_png
 from apps.schedules.models import Employee
 
 factory = APIRequestFactory()
 
 
-def _uploaded_file(name: str = 'scan.png') -> SimpleUploadedFile:
-    return SimpleUploadedFile(name, b'image-content', content_type='image/png')
-
-
 def _create_document(*, title: str = 'Manual') -> Document:
-    return Document.objects.create(title=title, file=_uploaded_file('folder/manual.png'))
+    return Document.objects.create(title=title, file=uploaded_png('folder/manual.png'))
 
 
 def _create_employee(nickname: str | None = None) -> Employee:
@@ -87,7 +83,7 @@ def test_document_upload_serializer_sets_uploaded_by(admin_user):
     request = factory.post('/')
     request.user = admin_user
     serializer = DocumentUploadSerializer(
-        data={'title': 'Uploaded', 'file': _uploaded_file('upload.png')},
+        data={'title': 'Uploaded', 'file': uploaded_png('upload.png')},
         context={'request': request},
     )
     assert serializer.is_valid(), serializer.errors

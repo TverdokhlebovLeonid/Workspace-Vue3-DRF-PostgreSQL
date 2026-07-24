@@ -1,7 +1,8 @@
-from datetime import datetime
+from datetime import date, datetime
 
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics, status
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -19,11 +20,35 @@ from apps.schedules.services.grid import build_schedule_grid, build_schedule_his
 from apps.schedules.services.period import resolve_grid_start
 from apps.schedules.services.save import apply_schedule_changes
 
+MIN_HISTORY_WEEKS = 1
+MAX_HISTORY_WEEKS = 12
+
+
+def _parse_date_param(raw: str, field_name: str = 'date') -> date:
+    try:
+        return datetime.strptime(raw, '%Y-%m-%d').date()
+    except ValueError as exc:
+        raise ValidationError({field_name: 'Invalid date format. Use YYYY-MM-DD.'}) from exc
+
 
 def _resolve_start(raw: str | None):
     if raw:
-        return resolve_grid_start(datetime.strptime(raw, '%Y-%m-%d').date())
+        return resolve_grid_start(_parse_date_param(raw, 'start'))
     return resolve_grid_start()
+
+
+def _parse_history_weeks(raw: str | None) -> int:
+    if raw is None or raw == '':
+        return 2
+    try:
+        weeks = int(raw)
+    except (TypeError, ValueError) as exc:
+        raise ValidationError({'weeks': 'Must be an integer.'}) from exc
+    if weeks < MIN_HISTORY_WEEKS or weeks > MAX_HISTORY_WEEKS:
+        raise ValidationError(
+            {'weeks': f'Must be between {MIN_HISTORY_WEEKS} and {MAX_HISTORY_WEEKS}.'}
+        )
+    return weeks
 
 
 class LocationListCreateView(generics.ListCreateAPIView):
@@ -80,9 +105,8 @@ class ScheduleGridHistoryView(APIView):
                 {'detail': 'Query param "before" is required (YYYY-MM-DD).'},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        before_date = datetime.strptime(before_param, '%Y-%m-%d').date()
-        weeks_param = request.query_params.get('weeks')
-        weeks = int(weeks_param) if weeks_param else 2
+        before_date = _parse_date_param(before_param, 'before')
+        weeks = _parse_history_weeks(request.query_params.get('weeks'))
         return Response(build_schedule_history(before_date, weeks=weeks))
 
 

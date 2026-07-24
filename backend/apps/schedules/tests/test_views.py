@@ -229,6 +229,23 @@ def test_schedule_grid_history_requires_before_param(auth_client):
 
 
 @pytest.mark.django_db
+def test_schedule_grid_history_rejects_invalid_before_date(auth_client):
+    response = auth_client.get(GRID_HISTORY_URL, {'before': 'not-a-date'})
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert 'before' in response.data
+
+
+@pytest.mark.django_db
+def test_schedule_grid_history_rejects_weeks_out_of_range(auth_client, grid_setup):
+    response = auth_client.get(
+        GRID_HISTORY_URL,
+        {'before': grid_setup['start_date'].isoformat(), 'weeks': 100},
+    )
+    assert response.status_code == status.HTTP_400_BAD_REQUEST
+    assert 'weeks' in response.data
+
+
+@pytest.mark.django_db
 def test_schedule_grid_history_returns_past_weeks(auth_client, grid_setup):
     before_date = grid_setup['start_date'] + timedelta(days=7)
     response = auth_client.get(

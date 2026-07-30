@@ -1,7 +1,7 @@
 import { AxiosError, type InternalAxiosRequestConfig } from 'axios'
 import { describe, expect, it } from 'vitest'
 
-import { getApiErrorBody } from '@/utils/apiError'
+import { getApiErrorBody, getApiErrorDetail } from '@/utils/apiError'
 
 function axiosErrorWithData(data: unknown): AxiosError {
   return new AxiosError('Request failed', 'ERR_BAD_REQUEST', undefined, undefined, {
@@ -38,5 +38,26 @@ describe('getApiErrorBody', () => {
       location_name: 'Point A'
     }
     expect(getApiErrorBody(axiosErrorWithData(body))).toEqual(body)
+  })
+})
+
+describe('getApiErrorDetail', () => {
+  it('returns string detail from response body', () => {
+    expect(
+      getApiErrorDetail(axiosErrorWithData({ detail: 'Employee is not assigned to location.' }))
+    ).toBe('Employee is not assigned to location.')
+  })
+
+  it('returns first item when detail is an array', () => {
+    expect(getApiErrorDetail(axiosErrorWithData({ detail: ['First error', 'Second error'] }))).toBe(
+      'First error'
+    )
+  })
+
+  it('returns undefined when detail is missing', () => {
+    expect(
+      getApiErrorDetail(axiosErrorWithData({ code: 'employee_not_assigned_to_location' }))
+    ).toBeUndefined()
+    expect(getApiErrorDetail(new Error('boom'))).toBeUndefined()
   })
 })

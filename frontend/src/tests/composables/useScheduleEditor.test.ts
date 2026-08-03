@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { useScheduleEditor } from '@/composables/useScheduleEditor'
 import {
   createScheduleGridFixture,
+  currentCellKey,
   editableCellKey,
   pastCellKey
 } from '@/tests/fixtures/scheduleGrid'
@@ -112,5 +113,125 @@ describe('useScheduleEditor', () => {
         employee_id: 'emp-3'
       }
     ])
+  })
+})
+
+describe('useScheduleEditor drag and drop', () => {
+  it('replaces cell employee from palette drop', () => {
+    const editor = useScheduleEditor()
+    editor.loadFromGrid(createScheduleGridFixture())
+
+    editor.handleDrop(editableCellKey, {
+      type: 'palette',
+      employee_id: 'emp-3',
+      nickname: 'Chris'
+    })
+
+    expect(editor.getCell(editableCellKey)).toEqual({
+      date: '2026-07-15',
+      employee_id: 'emp-3',
+      nickname: 'Chris'
+    })
+  })
+
+  it('swaps employees when dropping one cell onto another', () => {
+    const editor = useScheduleEditor()
+    editor.loadFromGrid(createScheduleGridFixture())
+
+    editor.handleDrop(editableCellKey, {
+      type: 'cell',
+      key: currentCellKey
+    })
+
+    expect(editor.getCell(editableCellKey)).toEqual({
+      date: '2026-07-15',
+      employee_id: 'emp-2',
+      nickname: 'Bob'
+    })
+    expect(editor.getCell(currentCellKey)).toEqual({
+      date: '2026-07-14',
+      employee_id: null,
+      nickname: ''
+    })
+  })
+
+  it('ignores drop onto a past cell', () => {
+    const editor = useScheduleEditor()
+    editor.loadFromGrid(createScheduleGridFixture())
+
+    editor.handleDrop(pastCellKey, {
+      type: 'palette',
+      employee_id: 'emp-3',
+      nickname: 'Chris'
+    })
+
+    expect(editor.getCell(pastCellKey)).toEqual({
+      date: '2026-07-10',
+      employee_id: 'emp-1',
+      nickname: 'Anna'
+    })
+  })
+
+  it('ignores swap when source cell is past', () => {
+    const editor = useScheduleEditor()
+    editor.loadFromGrid(createScheduleGridFixture())
+
+    editor.handleDrop(editableCellKey, {
+      type: 'cell',
+      key: pastCellKey
+    })
+
+    expect(editor.getCell(editableCellKey)).toEqual({
+      date: '2026-07-15',
+      employee_id: null,
+      nickname: ''
+    })
+    expect(editor.getCell(pastCellKey)).toEqual({
+      date: '2026-07-10',
+      employee_id: 'emp-1',
+      nickname: 'Anna'
+    })
+  })
+
+  it('does nothing when dropping a cell onto itself', () => {
+    const editor = useScheduleEditor()
+    editor.loadFromGrid(createScheduleGridFixture())
+
+    editor.handleDrop(currentCellKey, {
+      type: 'cell',
+      key: currentCellKey
+    })
+
+    expect(editor.getCell(currentCellKey)).toEqual({
+      date: '2026-07-14',
+      employee_id: 'emp-2',
+      nickname: 'Bob'
+    })
+    expect(editor.hasChanges.value).toBe(false)
+  })
+
+  it('tracks error keys via setErrorKeys and isError', () => {
+    const editor = useScheduleEditor()
+    editor.loadFromGrid(createScheduleGridFixture())
+
+    editor.setErrorKeys([editableCellKey, currentCellKey])
+
+    expect(editor.isError(editableCellKey)).toBe(true)
+    expect(editor.isError(currentCellKey)).toBe(true)
+    expect(editor.isError(pastCellKey)).toBe(false)
+  })
+
+  it('clears error keys on drop', () => {
+    const editor = useScheduleEditor()
+    editor.loadFromGrid(createScheduleGridFixture())
+    editor.setErrorKeys([editableCellKey])
+
+    editor.handleDrop(editableCellKey, {
+      type: 'palette',
+      employee_id: 'emp-3',
+      nickname: 'Chris'
+    })
+
+    expect(editor.isError(editableCellKey)).toBe(false)
   })
 })

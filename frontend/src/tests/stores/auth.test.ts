@@ -4,7 +4,9 @@ import { createPinia, setActivePinia } from 'pinia'
 import authApi from '@/api/auth'
 import { USER_ROLE } from '@/api/enum'
 import usersApi from '@/api/users'
-import { clearToken, getAccessToken, setHeadersToken } from '@/services/authToken'
+import { LANGUAGE_STORAGE_KEY } from '@/i18n'
+import { getDataFromStorage } from '@/services/localStorage'
+import { getAccessToken, setHeadersToken } from '@/services/authToken'
 import { useAuthStore } from '@/stores/auth'
 import type { User } from '@/types/auth'
 
@@ -144,5 +146,91 @@ describe('auth store login and initialization', () => {
     expect(store.user).toBeNull()
     expect(store.isAuthenticated).toBe(false)
     expect(getAccessToken()).toBeNull()
+  })
+})
+
+describe('auth store session restore and language', () => {
+  beforeEach(() => {
+    memoryToken = null
+    localStorage.clear()
+    setActivePinia(createPinia())
+    vi.clearAllMocks()
+  })
+
+  it('restores session when refresh succeeds', async () => {
+    vi.mocked(authApi.refreshToken).mockImplementation(async () => {
+      setHeadersToken('refreshed-token')
+      return { access: 'refreshed-token' }
+    })
+    vi.mocked(usersApi.getMe).mockResolvedValue(mockUser)
+    const store = useAuthStore()
+
+    await store.initialize()
+
+    expect(authApi.refreshToken).toHaveBeenCalled()
+    expect(store.user).toEqual(mockUser)
+    expect(store.isAuthenticated).toBe(true)
+    expect(getAccessToken()).toBe('refreshed-token')
+  })
+
+  it('clears local session when refresh fails', async () => {
+    vi.mocked(authApi.refreshToken).mockRejectedValue(new Error('refresh failed'))
+    const store = useAuthStore()
+
+    await store.initialize()
+
+    expect(store.user).toBeNull()
+    expect(store.isAuthenticated).toBe(false)
+    expect(getAccessToken()).toBeNull()
+    expect(usersApi.getMe).not.toHaveBeenCalled()
+  })
+
+  it('clears local session when refresh succeeds but getMe fails', async () => {
+    vi.mocked(authApi.refreshToken).mockImplementation(async () => {
+      setHeadersToken('refreshed-token')
+      return { access: 'refreshed-token' }
+    })
+    vi.mocked(usersApi.getMe).mockRejectedValue(new Error('getMe failed'))
+    const store = useAuthStore()
+
+    await store.initialize()
+
+    expect(store.user).toBeNull()
+    expect(store.isAuthenticated).toBe(false)
+    expect(getAccessToken()).toBeNull()
+  })
+
+  it('calls refresh with skipLoginRedirect', async () => {
+    vi.mocked(authApi.refreshToken).mockRejectedValue(new Error('refresh failed'))
+    const store = useAuthStore()
+
+    await store.initialize()
+
+    expect(authApi.refreshToken).toHaveBeenCalledWith({ skipLoginRedirect: true })
+  })
+
+  it('setLanguage for guest saves language to localStorage', async () => {
+    const store = useAuthStore()
+
+    await store.setLanguage('ru')
+
+    expect(store.language).toBe('ru')
+    expect(getDataFromStorage(LANGUAGE_STORAGE_KEY)).toBe('ru')
+    expect(usersApi.updateMe).not.toHaveBeenCalled()
+  })
+
+  it('setLanguage for authenticated user updates profile via API', async () => {
+    setHeadersToken('access-token')
+    const updatedUser = { ...mockUser, language: 'ru' as const }
+    vi.mocked(usersApi.getMe).mockResolvedValue(mockUser)
+    vi.mocked(usersApi.updateMe).mockResolvedValue(updatedUser)
+    const store = useAuthStore()
+    await store.initialize()
+
+    await store.setLanguage('ru')
+
+    expect(usersApi.updateMe).toHaveBeenCalledWith({ language: 'ru' })
+    expect(store.user).toEqual(updatedUser)
+    expect(store.language).toBe('ru')
   })
 })
